@@ -35,13 +35,13 @@
         </div>
 
         <div class="record-btn-con">
-            <router-link to="recording">
-            <button class="btn">
+            <!-- <router-link to="recording"> -->
+            <button @click="startRecording()" class="btn">
                 Start Recording
             </button>
-        </router-link>
+            <!-- </router-link> -->
         </div>
-    
+
     </div>
 </template>
 
@@ -181,7 +181,7 @@
         }
     }
 
-    .record-btn-con{
+    .record-btn-con {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -195,11 +195,56 @@
 export default {
     data() {
         return {
+            // screen
             toggle1: false,
+            // camera
             toggle2: false,
+            // mic
             toggle3: false,
         }
-
     },
+
+    methods: {
+        // start recording button to trigger this function
+        async startRecording() {
+            await this.checkAndRequestPermission(this.toggle1, this.requestScreenRecordingPermission);
+            await this.checkAndRequestPermission(this.toggle2, this.requestCameraPermission);
+            await this.checkAndRequestPermission(this.toggle3, this.requestMicrophonePermission);
+            this.$router.push('/recording');
+        },
+
+        async checkAndRequestPermission(toggle, permissionRequestFn) {
+            if (toggle) {
+                await permissionRequestFn.call(this);
+            }
+        },
+
+        async requestCameraPermission() {
+            await this.requestMediaPermission({ video: true }, 'videoElement');
+        },
+
+        async requestMicrophonePermission() {
+            await this.requestMediaPermission({ audio: true }, 'audioElement', true);
+        },
+
+        async requestScreenRecordingPermission() {
+            await this.requestMediaPermission({ video: true }, 'screenElement', true);
+        },
+
+        async requestMediaPermission(constraints, elementRef, showFlag = false) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const mediaElement = this.$refs[elementRef];
+                mediaElement.srcObject = stream;
+
+                if (showFlag) {
+                    this[`show${elementRef.charAt(0).toUpperCase() + elementRef.slice(1)}`] = true;
+                }
+            } catch (error) {
+                console.error(`Error accessing ${elementRef === 'videoElement' ? 'camera' : 'microphone/screen recording'}:`, error);
+            }
+        }
+    }
+
 }
 </script>
