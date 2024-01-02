@@ -205,46 +205,87 @@ export default {
     },
 
     methods: {
-        // start recording button to trigger this function
-        async startRecording() {
-            await this.checkAndRequestPermission(this.toggle1, this.requestScreenRecordingPermission);
-            await this.checkAndRequestPermission(this.toggle2, this.requestCameraPermission);
-            await this.checkAndRequestPermission(this.toggle3, this.requestMicrophonePermission);
-            this.$router.push('/recording');
-        },
+    async startRecording() {
+        let allPermissionsGranted = true;
 
-        async checkAndRequestPermission(toggle, permissionRequestFn) {
-            if (toggle) {
-                await permissionRequestFn.call(this);
-            }
-        },
-
-        async requestCameraPermission() {
-            await this.requestMediaPermission({ video: true }, 'videoElement');
-        },
-
-        async requestMicrophonePermission() {
-            await this.requestMediaPermission({ audio: true }, 'audioElement', true);
-        },
-
-        async requestScreenRecordingPermission() {
-            await this.requestMediaPermission({ video: true }, 'screenElement', true);
-        },
-
-        async requestMediaPermission(constraints, elementRef, showFlag = false) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                const mediaElement = this.$refs[elementRef];
-                mediaElement.srcObject = stream;
-
-                if (showFlag) {
-                    this[`show${elementRef.charAt(0).toUpperCase() + elementRef.slice(1)}`] = true;
-                }
-            } catch (error) {
-                console.error(`Error accessing ${elementRef === 'videoElement' ? 'camera' : 'microphone/screen recording'}:`, error);
+        if (this.toggle1 === true) {
+            if (!(await this.requestScreenRecordingPermission())) {
+                allPermissionsGranted = false;
             }
         }
+
+        if (this.toggle2 === true) {
+            if (!(await this.requestCameraPermission())) {
+                allPermissionsGranted = false;
+            }
+        }
+
+        if (this.toggle3 === true) {
+            if (!(await this.requestMicrophonePermission())) {
+                allPermissionsGranted = false;
+            }
+        }
+
+        if (allPermissionsGranted) {
+            this.$router.push('/recording');
+        }
+    },
+
+    async requestCameraPermission() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+            // Access the video element and set its source to the camera stream
+            const videoElement = this.$refs.videoElement;
+            videoElement.srcObject = stream;
+
+            return true; // Permission granted
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            return false; // Permission denied
+        }
+    },
+
+    async requestMicrophonePermission() {
+        try {
+            const mediaStream = await navigator.mediaDevices.getUserMedia({
+                audio: true, // Request only audio stream
+            });
+
+            // Check if audio is present and set corresponding flag
+            if (mediaStream.getAudioTracks().length > 0) {
+                const audioElement = this.$refs.audioElement;
+                audioElement.srcObject = mediaStream;
+                this.showAudio = true;
+                return true; // Permission granted
+            } else {
+                return false; // Audio permission denied
+            }
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            return false; // Permission denied
+        }
+    },
+
+    async requestScreenRecordingPermission() {
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true, // Request screen sharing
+            });
+
+            // Access the video element and set its source to the screen sharing stream
+            const screenElement = this.$refs.screenElement;
+            screenElement.srcObject = stream;
+            this.showScreen = true;
+
+            return true; // Permission granted
+        } catch (error) {
+            console.error('Error accessing screen recording:', error);
+            return false; // Permission denied
+        }
     }
+}
+
 
 }
 </script>
